@@ -1,10 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file
 import sqlite3
-import pandas as pd
 from datetime import datetime
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from openpyxl import load_workbook, Workbook
 
 app = Flask(__name__)
 DB_NAME = "gastos.db"
@@ -58,7 +58,6 @@ def index():
 
 @app.route("/gastos", methods=["GET"])
 def list_gastos():
-    # Filtros
     fecha_inicio = request.args.get("fecha_inicio")
     fecha_fin = request.args.get("fecha_fin")
     concepto = request.args.get("concepto")
@@ -86,7 +85,6 @@ def list_gastos():
     rows = c.fetchall()
     conn.close()
 
-    # Totales
     total_registros = len(rows)
     total_importe = sum(r[6] for r in rows) if rows else 0
 
@@ -141,7 +139,7 @@ def eliminar_gasto(gasto_id):
     conn.close()
     return redirect(url_for("list_gastos"))
 
-# ------------------ IMPORTAR / EXPORTAR EXCEL ------------------
+# ------------------ IMPORTAR EXCEL ------------------
 
 @app.route("/importar_excel", methods=["POST"])
 def importar_excel():
@@ -150,18 +148,14 @@ def importar_excel():
     if not file:
         return redirect(url_for("list_gastos"))
 
-    df = pd.read_excel(file)
-
-    # Normalizar encabezados
-    df.columns = df.columns.str.strip().str.upper()
+    wb = load_workbook(file)
+    ws = wb.active
 
     conn = sqlite3.connect("gastos.db")
     cursor = conn.cursor()
 
-    for _, row in df.iterrows():
-
-        # Convertir fecha DD/MM/YYYY → YYYY-MM-DD
-        fecha_excel = str(row["FECHA"]).strip().replace("//", "")
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        fecha_excel = str(row[0]).strip()
         dia, mes, anio = fecha_excel.split("/")
         fecha_sql = f"{anio}-{mes}-{dia}"
 
@@ -170,11 +164,11 @@ def importar_excel():
             VALUES (?, ?, ?, ?, ?, ?)
         """, (
             fecha_sql,
-            str(row["PAGADO_A"]),
-            str(row["CONCEPTO"]),
-            str(row["OBSERVACIONES"]),
-            str(row["RESPONSABLE"]),
-            float(row["IMPORTE"])
+            str(row[1]),
+            str(row[2]),
+            str(row[3]),
+            str(row[4]),
+            float(row[5])
         ))
 
     conn.commit()
@@ -182,9 +176,10 @@ def importar_excel():
 
     return redirect(url_for("list_gastos"))
 
+# ------------------ EXPORTAR EXCEL ------------------
+
 @app.route("/exportar_excel", methods=["GET"])
 def exportar_excel():
-    # Usamos los mismos filtros que en la lista
     fecha_inicio = request.args.get("fecha_inicio")
     fecha_fin = request.args.get("fecha_fin")
     concepto = request.args.get("concepto")
@@ -212,11 +207,18 @@ def exportar_excel():
     rows = c.fetchall()
     conn.close()
 
-    df = pd.DataFrame(rows, columns=["ID", "FECHA", "PAGADO_A", "CONCEPTO", "OBSERVACIONES", "RESPONSABLE", "IMPORTE"])
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Gastos"
+
+    headers = ["ID", "FECHA", "PAGADO_A", "CONCEPTO", "OBSERVACIONES", "RESPONSABLE", "IMPORTE"]
+    ws.append(headers)
+
+    for r in rows:
+        ws.append(r)
 
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="Gastos")
+    wb.save(output)
     output.seek(0)
 
     return send_file(
@@ -230,7 +232,6 @@ def exportar_excel():
 
 @app.route("/exportar_pdf", methods=["GET"])
 def exportar_pdf():
-    # mismos filtros
     fecha_inicio = request.args.get("fecha_inicio")
     fecha_fin = request.args.get("fecha_fin")
     concepto = request.args.get("concepto")
