@@ -223,16 +223,17 @@
 
     </div>
 
-    <div style="margin-bottom: 15px;">
-    <a href="?fecha_inicio={{ filtros.fecha_inicio }}&fecha_fin={{ filtros.fecha_fin }}&concepto={{ filtros.concepto }}&responsable={{ filtros.responsable }}&orden=asc">
-        Ordenar por fecha ↑
+   <div class="orden-container">
+    <a class="orden-btn"
+       href="?fecha_inicio={{ filtros.fecha_inicio }}&fecha_fin={{ filtros.fecha_fin }}&concepto={{ filtros.concepto }}&responsable={{ filtros.responsable }}&orden=asc">
+        Fecha ↑
     </a>
-    &nbsp;|&nbsp;
-    <a href="?fecha_inicio={{ filtros.fecha_inicio }}&fecha_fin={{ filtros.fecha_fin }}&concepto={{ filtros.concepto }}&responsable={{ filtros.responsable }}&orden=desc">
-        Ordenar por fecha ↓
+
+    <a class="orden-btn"
+       href="?fecha_inicio={{ filtros.fecha_inicio }}&fecha_fin={{ filtros.fecha_fin }}&concepto={{ filtros.concepto }}&responsable={{ filtros.responsable }}&orden=desc">
+        Fecha ↓
     </a>
 </div>
-
     <!-- TABLA -->
     <div class="card">
         <div class="card-header">Registros</div>
