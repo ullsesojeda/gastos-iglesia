@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Listado de gastos</title>
+
+    <!-- ====== SISTEMA DE TEMAS (CLARO / OSCURO) ====== -->
+    <style>
+        /* ====== TEMA CLARO ====== */
+        :root {
+            --bg: #f4f4f4;
+            --card-bg: #ffffff;
+            --text: #222;
+            --border: #ccc;
+            --table-header: #0d6efd;
+            --table-header-text: #fff;
+        }
+
+        /* ====== TEMA OSCURO ====== */
+        .dark-theme {
+            --bg: #1e1e1e;
+            --card-bg: #2a2a2a;
+            --text: #e6e6e6;
+            --border: #444;
+            --table-header: #333;
+            --table-header-text: #fff;
+        }
+
+        /* ====== ESTILOS GENERALES ====== */
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, sans-serif;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .form-control, .form-select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--table-header);
+            color: var(--table-header-text);
+            padding: 10px;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .btn-primary { background: #0d6efd; color: white; }
+        .btn-success { background: #198754; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-secondary { background: #6c757d; color: white; }
+
+        /* Botón de tema */
+        .theme-toggle {
+            float: right;
+            margin-bottom: 15px;
+            background: #444;
+            color: white;
+            border-radius: 6px;
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+
+        .row { display: flex; flex-wrap: wrap; gap: 15px; }
+        .col-md-3 { width: calc(25% - 15px); }
+        @media(max-width: 768px){
+            .col-md-3 { width: 100%; }
+        }
+    </style>
+</head>
+
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()">Cambiar tema</button>
+
+<div class="container">
+
+    <h1 class="text-center mb-4">💰 Listado de Gastos</h1>
+
+    <!-- FILTROS -->
+    <div class="card">
+        <div class="card-header">Filtros</div>
+
+        <form method="GET" action="{{ url_for('list_gastos') }}" class="row">
+
+            <div class="col-md-3">
+                <label>Fecha inicio:</label>
+                <input type="date" class="form-control" name="fecha_inicio" value="{{ filtros.fecha_inicio }}">
+            </div>
+
+            <div class="col-md-3">
+                <label>Fecha fin:</label>
+                <input type="date" class="form-control" name="fecha_fin" value="{{ filtros.fecha_fin }}">
+            </div>
+
+            <div class="col-md-3">
+                <label>Concepto:</label>
+                <input type="text" class="form-control" name="concepto" value="{{ filtros.concepto }}">
+            </div>
+
+            <div class="col-md-3">
+                <label>Responsable:</label>
+                <select class="form-select" name="responsable">
+                    <option value="">Todos</option>
+                    <option value="ULISES" {% if filtros.responsable == 'ULISES' %}selected{% endif %}>ULISES</option>
+                    <option value="TIMO" {% if filtros.responsable == 'TIMO' %}selected{% endif %}>TIMO</option>
+                    <option value="OTRO" {% if filtros.responsable == 'OTRO' %}selected{% endif %}>OTRO</option>
+                </select>
+            </div>
+
+            <div class="col-12 text-end">
+                <button class="btn btn-primary">Filtrar</button>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- Totales -->
+    <div class="card">
+        <strong>Total registros:</strong> {{ total_registros }} <br>
+        <strong>Total importe:</strong> ${{ "{:,.2f}".format(total_importe) }}
+
+    </div>
+
+    <!-- IMPORTAR / EXPORTAR -->
+    <div class="card">
+
+        <div class="card-header">Importar / Exportar</div>
+
+        <form method="POST" action="{{ url_for('importar_excel') }}" enctype="multipart/form-data" class="mb-3">
+            <label>Importar desde Excel:</label>
+            <input type="file" class="form-control mb-3" name="archivo_excel" accept=".xlsx,.xls" required>
+            <button class="btn btn-success">Importar</button>
+        </form>
+
+        <a class="btn btn-primary"
+           href="{{ url_for('exportar_excel',
+                            fecha_inicio=filtros.fecha_inicio,
+                            fecha_fin=filtros.fecha_fin,
+                            concepto=filtros.concepto,
+                            responsable=filtros.responsable) }}">
+            Exportar a Excel
+        </a>
+
+        <a class="btn btn-danger"
+           href="{{ url_for('exportar_pdf',
+                            fecha_inicio=filtros.fecha_inicio,
+                            fecha_fin=filtros.fecha_fin,
+                            concepto=filtros.concepto,
+                            responsable=filtros.responsable) }}">
+            Exportar a PDF
+        </a>
+
+    </div>
+
+    <!-- TABLA -->
+    <div class="card">
+        <div class="card-header">Registros</div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Pagado a</th>
+                    <th>Concepto</th>
+                    <th>Observaciones</th>
+                    <th>Responsable</th>
+                    <th>Importe</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% for g in gastos %}
+                <tr>
+                    <td>{{ g[0] }}</td>
+                    <td>{{ g[1].split('-')[2] }}/{{ g[1].split('-')[1] }}/{{ g[1].split('-')[0] }}</td>
+                    <td>{{ g[2] }}</td>
+                    <td>{{ g[3] }}</td>
+                    <td>{{ g[4] }}</td>
+                    <td>{{ g[5] }}</td>
+                    <td style="text-align:right;">${{ "{:,.2f}".format(g[6]) }}</td>
+
+                    <td>
+                        <a class="btn btn-warning btn-sm" href="{{ url_for('editar_gasto', gasto_id=g[0]) }}">Editar</a>
+
+                        <form method="POST" action="{{ url_for('eliminar_gasto', gasto_id=g[0]) }}"
+                              style="display:inline;">
+                            <button class="btn btn-danger btn-sm"
+                                    onclick="return confirm('¿Eliminar registro?');">
+                                Eliminar
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+    <div class="text-center mt-4">
+        <a class="btn btn-primary" href="{{ url_for('index') }}">Nuevo gasto</a>
+    </div>
+
+</div>
+
+<!-- SCRIPT PARA CAMBIO DE TEMA -->
+<script>
+    if (localStorage.getItem("theme") === "dark") {
+        document.body.classList.add("dark-theme");
+    }
+
+    function toggleTheme() {
+        document.body.classList.toggle("dark-theme");
+
+        if (document.body.classList.contains("dark-theme")) {
+            localStorage.setItem("theme", "dark");
+        } else {
+            localStorage.setItem("theme", "light");
+        }
+    }
+</script>
+
+</body>
+</html>
