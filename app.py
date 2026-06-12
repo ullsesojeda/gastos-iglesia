@@ -58,10 +58,14 @@ def index():
 
 @app.route("/gastos", methods=["GET"])
 def list_gastos():
+    # Filtros
     fecha_inicio = request.args.get("fecha_inicio")
     fecha_fin = request.args.get("fecha_fin")
     concepto = request.args.get("concepto")
     responsable = request.args.get("responsable")
+
+    # Ordenamiento (asc o desc)
+    orden = request.args.get("orden", "asc")
 
     query = "SELECT * FROM gastos WHERE 1=1"
     params = []
@@ -78,6 +82,12 @@ def list_gastos():
     if responsable:
         query += " AND responsable = ?"
         params.append(responsable)
+
+    # ORDENAMIENTO POR FECHA
+    if orden.lower() == "desc":
+        query += " ORDER BY fecha DESC"
+    else:
+        query += " ORDER BY fecha ASC"
 
     conn = get_connection()
     c = conn.cursor()
@@ -97,7 +107,8 @@ def list_gastos():
             "fecha_inicio": fecha_inicio or "",
             "fecha_fin": fecha_fin or "",
             "concepto": concepto or "",
-            "responsable": responsable or ""
+            "responsable": responsable or "",
+            "orden": orden
         }
     )
 
